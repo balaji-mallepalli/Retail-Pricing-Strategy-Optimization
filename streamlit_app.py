@@ -9,8 +9,13 @@ model = joblib.load("price_prediction_model.pkl")
 df = pd.read_csv("retail_price.csv")
 
 # Optional: convert date
+# Fix for date conversion crash
 if 'month_year' in df.columns:
-    df['month_year'] = pd.to_datetime(df['month_year'], format='%b %Y')
+    try:
+        df['month_year'] = pd.to_datetime(df['month_year'], errors='coerce')
+    except Exception as e:
+        st.warning("⚠️ Could not convert 'month_year' column to datetime.")
+
 
 # Encoding category
 df['product_category_name_encoded'] = df['product_category_name'].astype('category').cat.codes
