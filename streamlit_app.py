@@ -100,4 +100,4 @@ st.pyplot(fig)
 
 # Footer
 st.markdown("---")
-st.markdown("✅ Built by **Balaji Mallepalli** – SRM University AP | AI/&ML  Project 2025")
+st.markdown("✅ Built by **Balaji Mallepalli** – SRM University AP || AI&ML  Project 2025")
