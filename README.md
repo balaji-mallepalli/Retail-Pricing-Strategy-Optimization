@@ -85,6 +85,6 @@ retail-pricing-optimization/
 ├── retail_price.csv                         # Source dataset
 ├── price_prediction_model.pkl               # Trained model file
 ├── requirements.txt                         # Project dependencies
-├── final_report.pdf                         # PDF Report with screenshots
+├── Retail_Pricing_Final_Report.pdf          # PDF Report with screenshots
 ├── README.md                                # This documentation file
 ```
