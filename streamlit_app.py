@@ -6,14 +6,15 @@ import joblib
 
 # --- MODEL & DATA LOADING ---
 
-# Load trained model (pipeline) and column order
+# Load trained model (pipeline) and expected columns for prediction
 try:
     model_data = joblib.load("price_prediction_model.pkl")
     model = model_data["model"]
-    expected_columns = model_data.get("columns", None)
+    expected_columns = model_data["columns"]
 except Exception:
-    st.error("❌ Could not load the ML model. Check filename or path.")
+    st.error("❌ Could not load the ML model or expected columns. Check file and format.")
     st.stop()
+
 # Load dataset
 try:
     df = pd.read_csv("retail_price.csv")
@@ -21,7 +22,7 @@ except Exception:
     st.error("❌ Could not load dataset. Make sure 'retail_price.csv' is present.")
     st.stop()
 
-# Convert to datetime if present
+# Convert to datetime
 if 'month_year' in df.columns:
     try:
         df['month_year'] = pd.to_datetime(df['month_year'], errors='coerce')
@@ -58,7 +59,6 @@ if prod_df.empty:
 price_min = float(prod_df['unit_price'].min())
 price_max = float(prod_df['unit_price'].max())
 price_default = float(prod_df['unit_price'].mean())
-
 price_input = st.sidebar.slider("Set New Price", price_min, price_max, price_default, step=0.1)
 
 # --- MAIN PANEL ---
@@ -66,19 +66,24 @@ price_input = st.sidebar.slider("Set New Price", price_min, price_max, price_def
 st.title("💰 Retail Pricing Strategy Optimization")
 st.markdown(f"### Simulating: **{category}** / **{product_id}** at ₹{price_input:.2f}")
 
-# Prepare input for model
-# Use mean values for all non-price features of this product (except price)
-# If you did OHE in pipeline, this works; if you did manual encoding, ensure all dummies included
+# Prepare input for the model: take mean of product's history, adjust price etc.
 input_row = prod_df.mean(numeric_only=True).to_frame().T
 if 'unit_price' in input_row.columns:
     input_row['unit_price'] = price_input
 if 'price_vs_comp' in input_row.columns and 'comp_avg_price' in input_row.columns:
     input_row['price_vs_comp'] = price_input - input_row['comp_avg_price']
 
-# Prediction
+# Ensure input_row has ALL and ONLY the expected_columns, with correct order
+for col in expected_columns:
+    if col not in input_row.columns:
+        input_row[col] = 0
+input_row = input_row[expected_columns]
+
+# --- PREDICTION ---
+
 try:
     pred = model.predict(input_row)[0]
-    # If your model uses log-transformed qty, inverse it
+    # If your target was log-transformed, perform inverse transformation
     if 'log_qty' in prod_df.columns:
         pred_qty = np.expm1(pred)
     else:
@@ -88,11 +93,12 @@ except Exception as e:
     st.error(f"❌ Prediction failed: {e}")
     st.stop()
 
-# Results
+# --- RESULTS ---
+
 st.metric("📦 Predicted Quantity Sold", f"{pred_qty:,.0f} units")
 st.metric("💵 Estimated Revenue", f"₹{revenue:,.2f}")
 
-# --- PRICE VS QUANTITY PLOT ---
+# --- HISTORICAL PRICE VS QUANTITY PLOT ---
 
 st.subheader("📈 Historical Price vs Quantity (Selected Product)")
 fig, ax = plt.subplots()
@@ -103,7 +109,7 @@ ax.set_ylabel("Quantity Sold")
 ax.legend()
 st.pyplot(fig)
 
-# --- (Optional) Simulate Revenue Curve Over Price Grid ---
+# --- SIMULATED REVENUE VS PRICE CURVE ---
 
 st.subheader("🧮 Simulated Revenue vs Price")
 price_grid = np.linspace(price_min, price_max, 40)
@@ -132,4 +138,4 @@ except Exception as e:
 
 # --- Footer ---
 st.markdown("---")
-st.markdown("*Built by Balaji Mallepalli – SRM University AP || AI/ML  Project*")
+st.markdown("*Built by Balaji Mallepalli – SRM University AP || AI/ML Project*")
