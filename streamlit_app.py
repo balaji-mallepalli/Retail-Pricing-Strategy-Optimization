@@ -112,6 +112,14 @@ st.pyplot(fig)
 # --- SIMULATED REVENUE VS PRICE CURVE ---
 
 st.subheader("🧮 Simulated Revenue vs Price")
+# Ensure all expected columns exist in input_grid
+for col in expected_columns:
+    if col not in input_grid.columns:
+        input_grid[col] = 0  # or another suitable default
+
+# Reorder columns to match model expectation exactly
+input_grid = input_grid[expected_columns]
+
 price_grid = np.linspace(price_min, price_max, 40)
 input_grid = pd.concat([input_row]*len(price_grid), ignore_index=True)
 input_grid['unit_price'] = price_grid
