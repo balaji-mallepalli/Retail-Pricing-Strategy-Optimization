@@ -8,7 +8,7 @@ import joblib
 
 # Load trained model (pipeline) and column order
 try:
-    model = joblib.load("final_xgb_pricing_model.pkl")
+    model = joblib.load("price_prediction_model.pkl")
 except Exception:
     st.error("❌ Could not load the ML model. Check filename or path.")
     st.stop()
