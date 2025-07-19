@@ -8,11 +8,12 @@ import joblib
 
 # Load trained model (pipeline) and column order
 try:
-    model = joblib.load("price_prediction_model.pkl")
+    model_data = joblib.load("price_prediction_model.pkl")
+    model = model_data["model"]
+    expected_columns = model_data.get("columns", None)
 except Exception:
     st.error("❌ Could not load the ML model. Check filename or path.")
     st.stop()
-
 # Load dataset
 try:
     df = pd.read_csv("retail_price.csv")
