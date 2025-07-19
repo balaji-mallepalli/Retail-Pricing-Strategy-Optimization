@@ -6,7 +6,7 @@ import joblib
 
 # --- MODEL & DATA LOADING ---
 
-# Load trained model (pipeline) and expected columns for prediction
+# Load model and expected columns
 try:
     model_data = joblib.load("price_prediction_model.pkl")
     model = model_data["model"]
@@ -22,7 +22,7 @@ except Exception:
     st.error("❌ Could not load dataset. Make sure 'retail_price.csv' is present.")
     st.stop()
 
-# Convert to datetime
+# Convert to datetime if present
 if 'month_year' in df.columns:
     try:
         df['month_year'] = pd.to_datetime(df['month_year'], errors='coerce')
@@ -32,8 +32,6 @@ if 'month_year' in df.columns:
 # --- SIDEBAR INPUTS ---
 
 st.sidebar.title("🔧 Pricing Simulator")
-
-# Category selection
 if 'product_category_name' not in df.columns:
     st.error("'product_category_name' column missing.")
     st.stop()
@@ -73,7 +71,7 @@ if 'unit_price' in input_row.columns:
 if 'price_vs_comp' in input_row.columns and 'comp_avg_price' in input_row.columns:
     input_row['price_vs_comp'] = price_input - input_row['comp_avg_price']
 
-# Ensure input_row has ALL and ONLY the expected_columns, with correct order
+# Ensure input_row has ALL and ONLY the expected_columns with correct order
 for col in expected_columns:
     if col not in input_row.columns:
         input_row[col] = 0
@@ -84,10 +82,7 @@ input_row = input_row[expected_columns]
 try:
     pred = model.predict(input_row)[0]
     # If your target was log-transformed, perform inverse transformation
-    if 'log_qty' in prod_df.columns:
-        pred_qty = np.expm1(pred)
-    else:
-        pred_qty = pred
+    pred_qty = np.expm1(pred) if 'log_qty' in prod_df.columns else pred
     revenue = pred_qty * price_input
 except Exception as e:
     st.error(f"❌ Prediction failed: {e}")
@@ -112,26 +107,22 @@ st.pyplot(fig)
 # --- SIMULATED REVENUE VS PRICE CURVE ---
 
 st.subheader("🧮 Simulated Revenue vs Price")
-# Ensure all expected columns exist in input_grid
-for col in expected_columns:
-    if col not in input_grid.columns:
-        input_grid[col] = 0  # or another suitable default
-
-# Reorder columns to match model expectation exactly
-input_grid = input_grid[expected_columns]
-
 price_grid = np.linspace(price_min, price_max, 40)
+# Start from input_row - repeat for each price in grid
 input_grid = pd.concat([input_row]*len(price_grid), ignore_index=True)
 input_grid['unit_price'] = price_grid
 if 'price_vs_comp' in input_grid.columns and 'comp_avg_price' in input_grid.columns:
     input_grid['price_vs_comp'] = price_grid - input_grid['comp_avg_price']
 
+# Ensure alignment for all columns (critical for sklearn pipeline)
+for col in expected_columns:
+    if col not in input_grid.columns:
+        input_grid[col] = 0
+input_grid = input_grid[expected_columns]
+
 try:
     pred_grid = model.predict(input_grid)
-    if 'log_qty' in prod_df.columns:
-        pred_qties = np.expm1(pred_grid)
-    else:
-        pred_qties = pred_grid
+    pred_qties = np.expm1(pred_grid) if 'log_qty' in prod_df.columns else pred_grid
     revs = price_grid * pred_qties
     plt.figure(figsize=(6,4))
     plt.plot(price_grid, revs)
